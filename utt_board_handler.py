@@ -44,7 +44,7 @@ def getData():
 
 def getPackets(buffer):
 	opening_packet = getOpeningPacket(buffer)
-	record_packets = getRecordPackets(buffer)
+	record_packets = getRecordPackets(buffer, opening_packet)
 	closing_packet = getClosingPacket(buffer)
 	return (opening_packet, record_packets, closing_packet)
 
@@ -53,25 +53,28 @@ def getOpeningPacket(buffer):
 	my_opening_packet = {
 		"serial_number": int('0x'+opening_packet[4:12], 0),
 		"sampling_frequency": int('0x'+opening_packet[12:14], 0),
+		"frequency_unit": "Hz",
 		"scale_mode": scaleModes[opening_packet[14:16]],
 		"version_number": int('0x'+opening_packet[16:18], 0),
 		"battery_level": int('0x'+opening_packet[18:20], 0),
 		"distance_between_X": int('0x'+opening_packet[20:24], 0),
-		"distance_between_Y": int('0x'+opening_packet[24:28], 0)
+		"distance_between_Y": int('0x'+opening_packet[24:28], 0),
+		"distance_unit": "millisecond",
+		"pressure_order": "[sensor 1, sensor 2, sensor 3, sensor 4]",
+		"pressure_unit": "Newton"
 	}
 	return my_opening_packet
 
-def getRecordPackets(buffer):
+def getRecordPackets(buffer, opening_packet):
 	record_packets = re.findall(r'504d.+?4d50', buffer)
 	my_record_packets = []
 	for packet in record_packets:
+		record_number = int('0x'+packet[4:12], 0)
 		my_record_packets.append(
 			{
-				"record_number": int('0x'+packet[4:12], 0),
-				"pressure_1": int('0x'+packet[12:16], 0),
-				"pressure_2": int('0x'+packet[16:20], 0),
-				"pressure_3": int('0x'+packet[20:24], 0),
-				"pressure_4": int('0x'+packet[24:28], 0)
+				"record_number": record_number,
+				"time_stamp": record_number / opening_packet["sampling_frequency"],
+				"pressure": [int('0x'+packet[12:16], 0), int('0x'+packet[16:20], 0), int('0x'+packet[20:24], 0), int('0x'+packet[24:28], 0)]
 			}
 		)
 	return my_record_packets
